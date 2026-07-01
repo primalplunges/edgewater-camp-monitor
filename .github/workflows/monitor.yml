@@ -1,0 +1,38 @@
+name: Edgewater Riverfront Monitor
+
+on:
+  schedule:
+    - cron: "0 * * * *"        # top of every hour (UTC). GitHub may delay under load.
+  workflow_dispatch:            # lets you run it manually from the Actions tab
+
+# allow the job to commit state.json back so we only notify on change
+permissions:
+  contents: write
+
+concurrency:
+  group: edgewater-monitor
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run availability check
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python3 monitor.py
+
+      - name: Persist state (notify-on-change)
+        run: |
+          if [ -n "$(git status --porcelain state.json)" ]; then
+            git config user.name "edgewater-monitor-bot"
+            git config user.email "actions@github.com"
+            git add state.json
+            git commit -m "update availability state [skip ci]"
+            git push
+          else
+            echo "No state change to commit."
+          fi

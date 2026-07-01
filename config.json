@@ -1,0 +1,9 @@
+{
+  "length_ft": 42,
+  "equipment_type_id": 3,
+  "notify_mode": "on_change",
+  "ntfy_topic": "",
+  "stays": [
+    { "arrival": "2026-08-14", "departure": "2026-08-17" }
+  ]
+}
