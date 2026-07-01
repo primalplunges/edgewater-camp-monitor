@@ -21,7 +21,8 @@ Two outcomes trigger an alert:
   titles containing **"Riverfront"**. The site's "Only N sites available!" banner is ignored.
 - Availability depends on rig length — the length filter is always applied, so results match
   what can actually fit your 42 ft fifth wheel.
-- Notifies **only on change** (a site going full → available), so no hourly spam.
+- Pings up to `max_notifications` times (default 4) per availability window, then goes quiet
+  until availability actually changes — so you're reminded a few times without endless spam.
 
 ## What it monitors
 
@@ -31,7 +32,7 @@ Edit [`config.json`](config.json):
 {
   "length_ft": 42,
   "equipment_type_id": 3,          // 3 = Fifth Wheel (4=Travel Trailer, 5=Class A, 7=Class C, 11=Tent ...)
-  "notify_mode": "on_change",       // notify only when the outcome changes (no repeat spam)
+  "max_notifications": 4,           // max pings per availability window (resets when it changes)
   "min_riverfront_nights": 2,       // SPLIT threshold: min nights that must be Riverfront
   "stays": [
     { "arrival": "2026-08-14", "departure": "2026-08-17" }
@@ -75,6 +76,6 @@ NTFY_TOPIC=your-topic python3 monitor.py
 ## Files
 - `monitor.py` — the checker + notifier (`--heartbeat` sends the daily status ping)
 - `config.json` — dates, rig length, notify mode
-- `state.json` — auto-managed; remembers last-seen availability (for notify-on-change)
+- `state.json` — auto-managed; remembers the current availability signature + ping count
 - `.github/workflows/monitor.yml` — every-15-minutes availability check
 - `.github/workflows/heartbeat.yml` — daily "still running" push (02:00 UTC ≈ 8 PM Mountain)

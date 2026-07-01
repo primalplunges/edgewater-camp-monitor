@@ -223,7 +223,7 @@ def default_min_river(total):
 def main(heartbeat=False):
     cfg = json.loads((HERE / "config.json").read_text())
     topic = os.environ.get("NTFY_TOPIC") or cfg.get("ntfy_topic", "")
-    always = cfg.get("notify_mode", "on_change") == "always"
+    max_notifs = int(cfg.get("max_notifications", 4))
     state = load_state()
     changed_state = False
     hb_lines = []
@@ -260,15 +260,26 @@ def main(heartbeat=False):
         if heartbeat:
             continue
 
-        prev_sig = state.get(key)
-        if o["signature"] != prev_sig:
-            state[key] = o["signature"]
-            changed_state = True
-        # notify when there's a qualifying outcome; in "always" mode re-notify
-        # every run while it stays available, otherwise only when it changes.
-        if o["tier"] and (always or o["signature"] != prev_sig):
+        # Per-stay state: {signature, count}. `count` = how many times we've
+        # already pushed for THIS availability window. A new/changed signature
+        # (sites filling and reopening, or a different set of sites) resets it.
+        prev = state.get(key)
+        prev = prev if isinstance(prev, dict) else {}
+        prev_sig, prev_count = prev.get("signature"), prev.get("count", 0)
+        count = prev_count if o["signature"] == prev_sig else 0
+
+        if o["tier"] and count < max_notifs:
             title, body, tags, prio = build_message(o)
             notify(topic, title, body, tags, prio)
+            count += 1
+            print(f"  [notify] {count}/{max_notifs} for this availability window")
+        elif o["tier"]:
+            print(f"  [notify] cap reached ({max_notifs}); silent until availability changes")
+
+        new_entry = {"signature": o["signature"], "count": count}
+        if new_entry != prev:
+            state[key] = new_entry
+            changed_state = True
 
     if heartbeat:
         summary = "\n".join(hb_lines)
