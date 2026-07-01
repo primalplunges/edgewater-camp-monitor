@@ -223,6 +223,7 @@ def default_min_river(total):
 def main(heartbeat=False):
     cfg = json.loads((HERE / "config.json").read_text())
     topic = os.environ.get("NTFY_TOPIC") or cfg.get("ntfy_topic", "")
+    always = cfg.get("notify_mode", "on_change") == "always"
     state = load_state()
     changed_state = False
     hb_lines = []
@@ -263,9 +264,11 @@ def main(heartbeat=False):
         if o["signature"] != prev_sig:
             state[key] = o["signature"]
             changed_state = True
-            if o["tier"]:  # newly reached a notify-worthy outcome
-                title, body, tags, prio = build_message(o)
-                notify(topic, title, body, tags, prio)
+        # notify when there's a qualifying outcome; in "always" mode re-notify
+        # every run while it stays available, otherwise only when it changes.
+        if o["tier"] and (always or o["signature"] != prev_sig):
+            title, body, tags, prio = build_message(o)
+            notify(topic, title, body, tags, prio)
 
     if heartbeat:
         summary = "\n".join(hb_lines)
