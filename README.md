@@ -1,9 +1,16 @@
 # Edgewater Riverfront Campsite Monitor
 
 Checks **edgewateratlava.com** every **15 minutes** for open **Riverfront** RV sites that fit
-a **42 ft Fifth Wheel**, and pushes a phone notification (via [ntfy](https://ntfy.sh))
-the moment one becomes bookable. Also sends a **daily heartbeat** (~8 PM Mountain) so you know
-it's still running even when there's nothing to report.
+a **42 ft Fifth Wheel**, and pushes a phone notification (via [ntfy](https://ntfy.sh)) — with
+the site name(s), dates, and price — the moment one becomes bookable. Also sends a
+**daily heartbeat** (~8 PM Mountain) so you know it's still running.
+
+Two outcomes trigger an alert:
+- **FULL** — a single Riverfront site is bookable for the whole stay (best case).
+- **SPLIT** — no single site covers the whole stay, but by moving sites mid-stay you can spend
+  at least `min_riverfront_nights` of the nights on Riverfront (every night bookable somewhere).
+  This mirrors the site's *"I'm willing to move mid-stay"* option, and is computed by checking
+  each night individually — more reliable than scraping the combination screen.
 
 > **Make the repo public.** GitHub gives public repos unlimited Actions minutes; a private repo
 > only gets 2,000/month, which the 15-minute schedule would exceed. Nothing sensitive is in the
@@ -24,15 +31,18 @@ Edit [`config.json`](config.json):
 {
   "length_ft": 42,
   "equipment_type_id": 3,          // 3 = Fifth Wheel (4=Travel Trailer, 5=Class A, 7=Class C, 11=Tent ...)
-  "notify_mode": "on_change",       // or "always" to ping every hour there's availability
+  "notify_mode": "on_change",       // notify only when the outcome changes (no repeat spam)
+  "min_riverfront_nights": 2,       // SPLIT threshold: min nights that must be Riverfront
   "stays": [
     { "arrival": "2026-08-14", "departure": "2026-08-17" }
   ]
 }
 ```
 
-Add more objects to `stays` to watch multiple date ranges at once. You can override
-`length_ft` / `equipment_type_id` per stay.
+Add more objects to `stays` to watch multiple date ranges at once. Any of `length_ft`,
+`equipment_type_id`, and `min_riverfront_nights` can be overridden per stay. If
+`min_riverfront_nights` is omitted it defaults to a strict majority of the nights
+(e.g. 2 of 3, 3 of 4).
 
 ## One-time setup
 
