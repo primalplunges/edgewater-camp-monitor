@@ -2,7 +2,7 @@ name: Edgewater Riverfront Monitor
 
 on:
   schedule:
-    - cron: "0 * * * *"        # top of every hour (UTC). GitHub may delay under load.
+    - cron: "*/15 * * * *"     # every 15 minutes (UTC). GitHub may delay under load.
   workflow_dispatch:            # lets you run it manually from the Actions tab
 
 # allow the job to commit state.json back so we only notify on change

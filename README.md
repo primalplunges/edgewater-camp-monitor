@@ -1,8 +1,13 @@
 # Edgewater Riverfront Campsite Monitor
 
-Checks **edgewateratlava.com** every hour for open **Riverfront** RV sites that fit a
-**42 ft Fifth Wheel**, and pushes a phone notification (via [ntfy](https://ntfy.sh))
-the moment one becomes bookable.
+Checks **edgewateratlava.com** every **15 minutes** for open **Riverfront** RV sites that fit
+a **42 ft Fifth Wheel**, and pushes a phone notification (via [ntfy](https://ntfy.sh))
+the moment one becomes bookable. Also sends a **daily heartbeat** (~8 PM Mountain) so you know
+it's still running even when there's nothing to report.
+
+> **Make the repo public.** GitHub gives public repos unlimited Actions minutes; a private repo
+> only gets 2,000/month, which the 15-minute schedule would exceed. Nothing sensitive is in the
+> code — your ntfy topic is stored as a secret, not committed.
 
 - Browser-free: one HTTPS request per stay against the Newbook booking engine.
 - Detects real **"Book now"** buttons per category (the authoritative signal), filtered to
@@ -58,7 +63,8 @@ NTFY_TOPIC=your-topic python3 monitor.py
 ```
 
 ## Files
-- `monitor.py` — the checker + notifier
+- `monitor.py` — the checker + notifier (`--heartbeat` sends the daily status ping)
 - `config.json` — dates, rig length, notify mode
 - `state.json` — auto-managed; remembers last-seen availability (for notify-on-change)
-- `.github/workflows/monitor.yml` — hourly schedule
+- `.github/workflows/monitor.yml` — every-15-minutes availability check
+- `.github/workflows/heartbeat.yml` — daily "still running" push (02:00 UTC ≈ 8 PM Mountain)

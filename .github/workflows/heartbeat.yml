@@ -1,0 +1,23 @@
+name: Edgewater Daily Heartbeat
+
+on:
+  schedule:
+    # 02:00 UTC = 8:00 PM Mountain Daylight Time (summer). In winter (MST) this
+    # lands at 7:00 PM. Adjust to "0 3 * * *" if you want 8 PM year-round in winter.
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Send daily status push
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python3 monitor.py --heartbeat

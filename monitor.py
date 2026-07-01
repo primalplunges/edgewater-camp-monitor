@@ -102,13 +102,14 @@ def save_state(state):
     STATE_FILE.write_text(json.dumps(state, indent=2))
 
 
-def main():
+def main(heartbeat=False):
     cfg = json.loads((HERE / "config.json").read_text())
     topic = os.environ.get("NTFY_TOPIC") or cfg.get("ntfy_topic", "")
     always = cfg.get("notify_mode", "on_change") == "always"
     state = load_state()
     changed_state = False
-    any_available_lines = []
+    heartbeat_lines = []       # one summary line per stay, for the daily heartbeat
+    total_available = 0
 
     for stay in cfg["stays"]:
         a, d = stay["arrival"], stay["departure"]
@@ -119,11 +120,22 @@ def main():
         h = fetch(a, d, length, equip)
         avail = available_riverfront(h)
         avail_ids = sorted(avail.keys())
+        total_available += len(avail)
 
         print(f"\n{a} -> {d}  ({nights(a,d)} nt, {length}ft)  "
               f"riverfront available: {len(avail)}")
         for cid, info in avail.items():
             print(f"   AVAILABLE  ${info['price']}/nt  [{cid}] {info['name']}")
+
+        if avail:
+            heartbeat_lines.append(f"{pretty(a)}–{pretty(d)}: {len(avail)} open ✅")
+        else:
+            heartbeat_lines.append(f"{pretty(a)}–{pretty(d)}: none yet")
+
+        # In heartbeat mode we only report; we don't touch state or fire the
+        # per-change alert (the 15-min job owns that).
+        if heartbeat:
+            continue
 
         prev = set(state.get(key, []))
         now = set(avail_ids)
@@ -137,9 +149,22 @@ def main():
         if should_push and avail:
             sites = "\n".join(f"• {i['name']}  (${i['price']}/nt)" for i in avail.values())
             title = f"🏕️ Riverfront open: {pretty(a)}–{pretty(d)}"
-            msg = f"{len(avail)} Riverfront site(s) available for a {length}ft Fifth Wheel:\n{sites}\n\nBook: {BOOK_URL}"
+            msg = (f"{len(avail)} Riverfront site(s) available for a {length}ft "
+                   f"Fifth Wheel:\n{sites}\n\nBook: {BOOK_URL}")
             notify(topic, title, msg)
-            any_available_lines.append(f"{a}->{d}: {len(avail)} riverfront")
+
+    if heartbeat:
+        summary = "\n".join(heartbeat_lines)
+        if total_available:
+            title = "🏕️ Daily check — Riverfront sites are OPEN"
+            body = f"Monitor is running. Something is available right now:\n{summary}\n\nBook: {BOOK_URL}"
+            notify(topic, title, body, tags="tent", priority="default")
+        else:
+            title = "✅ Daily check — monitor running, nothing yet"
+            body = f"Still watching every 15 min. No Riverfront openings found:\n{summary}"
+            notify(topic, title, body, tags="hourglass_flowing_sand", priority="low")
+        print("\nHeartbeat sent.")
+        return
 
     if changed_state:
         save_state(state)
@@ -147,4 +172,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(heartbeat=("--heartbeat" in sys.argv))
